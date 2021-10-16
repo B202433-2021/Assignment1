@@ -1,25 +1,33 @@
 #!/bin/bash
 
 # defining file paths as variables for simpler use later in the script
+fastqdir=/localdisk/data/BPSM/AY21/fastq
 Tcongo_genome=/localdisk/data/BPSM/AY21/Tcongo_genome/TriTrypDB-46_TcongolenseIL3000_2019_Genome.fasta.gz
 bedfile=/localdisk/data/BPSM/AY21/TriTrypDB46_TcongolenseIL3000_2019.bed
 
-for fastq_file in /localdisk/data/BPSM/AY21/fastq/*fq.gz
-do
+#for fastq_file in $fastqdir/*fq.gz
+#do
 # fastqc is running but either very slowly or quickly and with errors. Doesn't make it the whole way.
 # also still need to think how I interpret the output to give the user something informative.
-fastqc -o fastqc_outputs $fastq_file &
-done
+#fastqc -o fastqc_outputs $fastq_file &
+#done
+ 
 
 # create bowtie2 index database for the T. congolense reference genome
-bowtie2-build $Tcongo_genome Tcongo_indexed_genome
+#bowtie2-build $Tcongo_genome Tcongo_indexed_genome
 
-# map each pair of reads to the bowtie index database for the T. congolense reference genome
-# -1 and -2 can be a comma separated list of all the files (1 is one of the pair, 2 is the other)
-bowtie2 -x Tcongo_indexed_genome -1 SAMPLE_R1.fastq -2 SAMPLE_R2.fastq -p 12 -S SAMPLE.sam
+# iterate over all pairs of fastq files
+for fastq_1_file in $fastqdir/*1.fq.gz
+do
+fastq_2_file=`echo $fastq_1_file | sed 's/_1/_2/'`
+
+# map each pair of reads to the bowtie index database for the T. congolense reference genome 
+bowtie2 -x $Tcongo_indexed_genome -q -1 $fastq_1_file -2 $fastq_2_file -S ${fastq_1_file:32:-8}.sam
 
 # convert sam file from bowtie2 output to a bam file
-samtools view -b -S SAMPLE.sam > SAMPLE.bam
+samtools view -b -S ${fastq_1_file:32:-8}.sam > ${fastq_1_file:32:-8}.bam
 
 # count the reads using bedtools multicov. -D means includes duplicate reads
-bedtools multicov -D -bams $BAM(bamfiles) -bed $bedfile
+bedtools multicov -D -bams ${fastq_1_file:32:-8}.bam -bed $bedfile
+
+done
