@@ -22,14 +22,67 @@ do
 fastq_2_file=`echo $fastq_1_file | sed 's/_1/_2/'`
 
 # map each pair of reads to the bowtie index database for the T. congolense reference genome 
-bowtie2 -x Tcongo_indexed_genome -q -1 $fastq_1_file -2 $fastq_2_file -S ${fastq_1_file:32:-8}.sam
+#bowtie2 -x Tcongo_indexed_genome -q -1 $fastq_1_file -2 $fastq_2_file -S ${fastq_1_file:32:-8}.sam
 
 # convert sam file from bowtie2 output to a bam file
-samtools view -b -S ${fastq_1_file:32:-8}.sam > ${fastq_1_file:32:-8}.bam
-samtools sort ${fastq_1_file:32:-8}.bam -o ${fastq_1_file:32:-8}.sorted.bam
-samtools index ${fastq_1_file:32:-8}.sorted.bam
+#samtools view -b -S ${fastq_1_file:32:-8}.sam > ${fastq_1_file:32:-8}.bam
+#samtools sort ${fastq_1_file:32:-8}.bam -o ${fastq_1_file:32:-8}.sorted.bam
+#samtools index ${fastq_1_file:32:-8}.sorted.bam
 
 # count the reads using bedtools multicov. -D means includes duplicate reads
-bedtools multicov -D -bams ${fastq_1_file:32:-8}.sorted.bam -bed $bedfile > ${fastq_1_file:32:-8}.counts
+#bedtools multicov -D -bams ${fastq_1_file:32:-8}.sorted.bam -bed $bedfile > ${fastq_1_file:32:-8}.counts
 
 done
+
+# Now need to generate groups from the sample info file.
+
+IFS=$'\t'
+while read wholeline
+read id sample replicate time ind end1 end2 <<< ${wholeline}
+do
+if test $sample == Clone1 && test $time == 0 
+then echo -e "${wholeline}" >> clone1_0_group.txt
+else
+if test $sample == Clone2 && test $time == 0 
+then echo -e "${wholeline}" >> clone2_0_group.txt
+else
+if test $sample == WT && test $time == 0 
+then echo -e "${wholeline}" >> wt_0_group.txt
+else
+if test $sample == Clone1 && test $time == 24 && test $treatment == Uninduced
+then echo -e "${wholeline}" >> clone1_24_unind_group.txt
+else
+if test $sample == Clone2 && test $time == 24 && test $treatment == Uninduced
+then echo -e "${wholeline}" >> clone2_24_unind_group.txt
+else
+if test $sample == WT && test $time == 24 && test $treatment == Uninduced
+then echo -e "${wholeline}" >> wt_24_unind_group.txt
+fi
+if test $sample == Clone1 && test $time == 48 && test $treatment == Uninduced
+then echo -e "${wholeline}" >> clone1_48_unind_group.txt
+fi
+if test $sample == Clone2 && test $time == 48 && test $treatment == Uninduced
+then echo -e "${wholeline}" >> clone2_48_unind_group.txt
+fi
+if test $sample == WT && test $time == 48 && test $treatment == Uninduced
+then echo -e "${wholeline}" >> wt_48_unind_group.txt
+fi
+if test $sample == Clone1 && test $time == 24 && test $treatment == Induced
+then echo -e "${wholeline}" >> clone1_24_ind_group.txt
+fi
+if test $sample == Clone2 && test $time == 24 && test $treatment == Induced
+then echo -e "${wholeline}" >> clone2_24_ind_group.txt
+fi
+if test $sample == WT && test $time == 24 && test $treatment == Induced
+then echo -e "${wholeline}" >> wt_24_ind_group.txt
+fi
+if test $sample == Clone1 && test $time == 48 && test $treatment == Induced
+then echo -e "${wholeline}" >> clone1_48_ind_group.txt
+fi
+if test $sample == Clone2 && test $time == 48 && test $treatment == Induced
+then echo -e "${wholeline}" >> clone2_48_ind_group.txt
+fi
+if test $sample == WT && test $time == 48 && test $treatment == Induced
+then echo -e "${wholeline}" >> wt_48_ind_group.txt
+fi
+done < "/localdisk/data/BPSM/AY21/fastq/100k.fqfiles" 
