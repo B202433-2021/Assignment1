@@ -37,52 +37,52 @@ done
 # Now need to generate groups from the sample info file.
 
 IFS=$'\t'
-while read wholeline
-read id sample replicate time ind end1 end2 <<< ${wholeline}
+while read id sample replicate time treatment end1 end2
 do
-if test $sample == Clone1 && test $time == 0 
-then echo -e "${wholeline}" >> clone1_0_group.txt
-else
+echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2"
+if test $sample == "Clone1" && test $time == "0" 
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone1_0_group.txt
+fi
 if test $sample == Clone2 && test $time == 0 
-then echo -e "${wholeline}" >> clone2_0_group.txt
-else
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone2_0_group.txt
+fi
 if test $sample == WT && test $time == 0 
-then echo -e "${wholeline}" >> wt_0_group.txt
-else
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_0_group.txt
+fi
 if test $sample == Clone1 && test $time == 24 && test $treatment == Uninduced
-then echo -e "${wholeline}" >> clone1_24_unind_group.txt
-else
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone1_24_unind_group.txt
+fi
 if test $sample == Clone2 && test $time == 24 && test $treatment == Uninduced
-then echo -e "${wholeline}" >> clone2_24_unind_group.txt
-else
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone2_24_unind_group.txt
+fi
 if test $sample == WT && test $time == 24 && test $treatment == Uninduced
-then echo -e "${wholeline}" >> wt_24_unind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_24_unind_group.txt
 fi
 if test $sample == Clone1 && test $time == 48 && test $treatment == Uninduced
-then echo -e "${wholeline}" >> clone1_48_unind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone1_48_unind_group.txt
 fi
 if test $sample == Clone2 && test $time == 48 && test $treatment == Uninduced
-then echo -e "${wholeline}" >> clone2_48_unind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone2_48_unind_group.txt
 fi
 if test $sample == WT && test $time == 48 && test $treatment == Uninduced
-then echo -e "${wholeline}" >> wt_48_unind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_48_unind_group.txt
 fi
 if test $sample == Clone1 && test $time == 24 && test $treatment == Induced
-then echo -e "${wholeline}" >> clone1_24_ind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone1_24_ind_group.txt
 fi
 if test $sample == Clone2 && test $time == 24 && test $treatment == Induced
-then echo -e "${wholeline}" >> clone2_24_ind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone2_24_ind_group.txt
 fi
 if test $sample == WT && test $time == 24 && test $treatment == Induced
-then echo -e "${wholeline}" >> wt_24_ind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_24_ind_group.txt
 fi
 if test $sample == Clone1 && test $time == 48 && test $treatment == Induced
-then echo -e "${wholeline}" >> clone1_48_ind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone1_48_ind_group.txt
 fi
 if test $sample == Clone2 && test $time == 48 && test $treatment == Induced
-then echo -e "${wholeline}" >> clone2_48_ind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone2_48_ind_group.txt
 fi
 if test $sample == WT && test $time == 48 && test $treatment == Induced
-then echo -e "${wholeline}" >> wt_48_ind_group.txt
+then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_48_ind_group.txt
 fi
 done < "/localdisk/data/BPSM/AY21/fastq/100k.fqfiles" 
