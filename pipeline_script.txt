@@ -36,10 +36,11 @@ done
 
 # Now need to generate groups from the sample info file.
 
+# Removing old groups 
+rm *group.txt
 IFS=$'\t'
 while read id sample replicate time treatment end1 end2
 do
-echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2"
 if test $sample == "Clone1" && test $time == "0" 
 then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> clone1_0_group.txt
 fi
@@ -86,3 +87,42 @@ if test $sample == WT && test $time == 48 && test $treatment == Induced
 then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_48_ind_group.txt
 fi
 done < "/localdisk/data/BPSM/AY21/fastq/100k.fqfiles" 
+
+# aim to create bedtools multicov outputs for all groups
+# looping over all the 15 groups
+for group_file in clone2_24_unind_group.txt
+do
+echo $group_file
+bam_file_array=()
+sample_count=0
+sample_count_array=()
+while read id sample replicate time treatment end1 end2
+do
+# add the bam files for the samples in the group to an array
+for bam_file in *.sorted.bam
+do
+if test ${end1::13} == ${bam_file::13}
+then
+bam_file_array+=($bam_file)
+sample_count=$((sample_count+1))
+sample_count_array+=("r$sample_count")
+echo ${sample_count_array[*]}
+fi
+done
+# use the array as input to the bedtools multicov. Sample reads will appear in columns in the same file making determining their mean much easier.
+bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
+
+# find the mean of the read data for the groups and paste these into a new file with just the gene names and descriptions
+while read f1 f2 f3 gene_name gene_description ${sample_count_array[*]}
+do 
+total=0
+for i in "${sample_count_array[@]}"
+do
+total=$((total+$i))
+done
+mean=$(($total/${#sample_count_array[@]}))
+echo -e "$gene_name\t$gene_description\t$mean" >> ${group_file::-4}.mean.counts.tsv
+done < ${group_file::-4}.counts.tsv 
+done < $group_file
+done
+
