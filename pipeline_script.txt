@@ -5,12 +5,24 @@ fastqdir=/localdisk/data/BPSM/AY21/fastq
 Tcongo_genome=/localdisk/data/BPSM/AY21/Tcongo_genome/TriTrypDB-46_TcongolenseIL3000_2019_Genome.fasta.gz
 bedfile=/localdisk/data/BPSM/AY21/TriTrypDB-46_TcongolenseIL3000_2019.bed
 
-#for fastq_file in $fastqdir/*fq.gz
-#do
-# fastqc is running but either very slowly or quickly and with errors. Doesn't make it the whole way.
-# also still need to think how I interpret the output to give the user something informative.
-#fastqc -o fastqc_outputs $fastq_file &
-#done
+mkdir fastqc_outputs
+for fastq_file in $fastqdir/*fq.gz
+ do
+ fastqc -o fastqc_outputs $fastq_file 
+done
+
+# assessing quality of output data. NEED TO DO NUMBERS AS WELL?!
+for fastqc_file in fastqc_outputs/*.zip
+ do
+ echo -e "\nSee below for summary statistics and fastqc quality metrics that sample ${fastqc_file:15:-11} failed on or where there are warnings."
+ echo "Please see the full html report including plots at ${fastqc_file::-4}.html"
+ echo -e "If quality is deemed to be insufficient please use the program Trimmomatic to filter poor quality reads and trim poor quality bases."
+ echo -e "Please save any trimmed fastq files in the same location with the same name as the original fastq file to overwrite it.\n"
+ unzip -q $fastqc_file 
+ head ${fastqc_file:15:-4}/fastqc_data.txt
+ echo ""
+ cat ${fastqc_file:15:-4}/summary.txt | grep "FAIL\|WARN"
+done
  
 
 # create bowtie2 index database for the T. congolense reference genome
@@ -91,38 +103,40 @@ done < "/localdisk/data/BPSM/AY21/fastq/100k.fqfiles"
 # aim to create bedtools multicov outputs for all groups
 # looping over all the 15 groups
 for group_file in clone2_24_unind_group.txt
-do
-echo $group_file
-bam_file_array=()
-sample_count=0
-sample_count_array=()
-while read id sample replicate time treatment end1 end2
-do
-# add the bam files for the samples in the group to an array
-for bam_file in *.sorted.bam
-do
-if test ${end1::13} == ${bam_file::13}
-then
-bam_file_array+=($bam_file)
-sample_count=$((sample_count+1))
-sample_count_array+=("r$sample_count")
-echo ${sample_count_array[*]}
-fi
-done
+ do
+ echo $group_file
+ bam_file_array=()
+ sample_count=0
+ sample_count_array=()
+ while read id sample replicate time treatment end1 end2
+ do
+ # add the bam files for the samples in the group to an array
+ for bam_file in *.sorted.bam
+  do
+  if test ${end1::13} == ${bam_file::13}
+   then
+   bam_file_array+=($bam_file)
+   sample_count=$((sample_count+1))
+   sample_count_array+=("r$sample_count")
+  fi
+ done
+ done < $group_file
+
+ echo ${sample_count_array[*]}
+ echo ${bam_file_array[*]}
+
 # use the array as input to the bedtools multicov. Sample reads will appear in columns in the same file making determining their mean much easier.
-bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
+#bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
 
 # find the mean of the read data for the groups and paste these into a new file with just the gene names and descriptions
-while read f1 f2 f3 gene_name gene_description ${sample_count_array[*]}
-do 
-total=0
-for i in "${sample_count_array[@]}"
-do
-total=$((total+$i))
+ while read f1 f2 f3 gene_name gene_description ${sample_count_array[*]}
+ do 
+ total=0
+ for i in ${sample_count_array[@]} 
+  do
+  total=$(($total+$i))
+ done
+ mean=$(($total/${#sample_count_array[@]}))
+ echo -e "$gene_name\t$gene_description\t$mean" >> clone2_24_unind_group.mean.counts.tsv
+ done < clone2_24_unind_group.counts.tsv 
 done
-mean=$(($total/${#sample_count_array[@]}))
-echo -e "$gene_name\t$gene_description\t$mean" >> ${group_file::-4}.mean.counts.tsv
-done < ${group_file::-4}.counts.tsv 
-done < $group_file
-done
-
