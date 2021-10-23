@@ -11,7 +11,7 @@ for fastq_file in $fastqdir/*fq.gz
  fastqc -o fastqc_outputs $fastq_file 
 done
 
-# assessing quality of output data. NEED TO DO NUMBERS AS WELL?!
+# assessing quality of output data
 for fastqc_file in fastqc_outputs/*.zip
  do
  echo -e "\nSee below for summary statistics and fastqc quality metrics that sample ${fastqc_file:15:-11} failed on or where there are warnings."
@@ -100,14 +100,11 @@ then echo -e "$id\t$sample\t$replicate\t$time\t$treatment\t$end1\t$end2" >> wt_4
 fi
 done < "/localdisk/data/BPSM/AY21/fastq/100k.fqfiles" 
 
-# aim to create bedtools multicov outputs for all groups
-# looping over all the 15 groups
-for group_file in clone2_24_unind_group.txt
+
+for group_file in *group.txt
  do
  echo $group_file
  bam_file_array=()
- sample_count=0
- sample_count_array=()
  while read id sample replicate time treatment end1 end2
  do
  # add the bam files for the samples in the group to an array
@@ -116,27 +113,44 @@ for group_file in clone2_24_unind_group.txt
   if test ${end1::13} == ${bam_file::13}
    then
    bam_file_array+=($bam_file)
-   sample_count=$((sample_count+1))
-   sample_count_array+=("r$sample_count")
   fi
  done
  done < $group_file
-
- echo ${sample_count_array[*]}
- echo ${bam_file_array[*]}
+ echo $bam_file_array
 
 # use the array as input to the bedtools multicov. Sample reads will appear in columns in the same file making determining their mean much easier.
-#bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
+bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
 
 # find the mean of the read data for the groups and paste these into a new file with just the gene names and descriptions
- while read f1 f2 f3 gene_name gene_description ${sample_count_array[*]}
- do 
- total=0
- for i in ${sample_count_array[@]} 
-  do
-  total=$(($total+$i))
- done
- mean=$(($total/${#sample_count_array[@]}))
- echo -e "$gene_name\t$gene_description\t$mean" >> clone2_24_unind_group.mean.counts.tsv
- done < clone2_24_unind_group.counts.tsv 
+ while read f1 f2 f3 gene_name gene_description sample1 sample2 sample3
+ do
+ total=$(( sample1+sample2+sample3 ))
+ mean=$(echo "scale=2; $total/3" | bc -l)
+ echo -e "$gene_name\t$gene_description\t$mean" >> ${group_file::-4}.mean.counts.tsv
+ done < ${group_file::-4}.counts.tsv
 done
+
+
+# calculate fold change data
+# probably want some sort of user input here as to which two files to compare
+while read gene_name gene_description mean
+do
+while read gene_name_2 gene_description_2 mean_2
+do 
+if [[ $gene_name == $gene_name_2 ]]
+ then
+ # Think of a more informative way to announce division by zero.
+ if [[ $mean != 0 ]]
+  then
+  fold_change=$(echo "$mean_2/$mean" | bc -l)
+ fi
+# then  gene name, descrption and mean_2/mean to a new fold change file
+ printf "$gene_name\t$gene_description\t%.2f\n" $fold_change >> fold_change_data.txt
+fi
+done < second_mean_file
+done < first_mean_file
+
+head fold_change_data.txt
+#echo ""
+#sort -t$'\t' -k3,3nr fold_change_data.txt
+
