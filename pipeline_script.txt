@@ -31,7 +31,7 @@ done
 # ask user if they are happy to proceed with the analysis. 
 read -p $'Would you like to proceed with the analysis? Please enter y or n:' x
 if test $x == y
- then 
+then 
 
 # create bowtie2 index database for the T. congolense reference genome
 bowtie2-build $Tcongo_genome Tcongo_indexed_genome
@@ -51,7 +51,7 @@ do
 done
 
 
-# read in information from the sample details file and paste it into relevant text files for the 15 sample groups
+# read in information from the sample details file and paste it into relevant text files for the sample groups
 IFS=$'\t'
 while read id sample replicate time treatment end1 end2
 do
@@ -64,14 +64,13 @@ done < "/localdisk/data/BPSM/AY21/fastq/100k.fqfiles"
 
 # iterate over all 15 sample groups
 for group_file in *group.txt
- do
- echo $group_file
- # initialise an array that will contain the 3 sample indexed bam files for the sample group
+do
+ # initialise an array that will eventually contain the 3 sample indexed bam files for the sample group
  bam_file_array=()
  # read in the file containing the sample details for that group
  while read id sample replicate time treatment end1 end2
  do
- # add the indexed bam files for the samples in the group to the bam file array
+ # add the corresponding indexed bam files for the samples in the group to the bam file array
  for bam_file in *.sorted.bam
   do
   if test ${end1::13} == ${bam_file::13}
@@ -80,10 +79,10 @@ for group_file in *group.txt
   fi
  done
  done < $group_file
- echo $bam_file_array
 
-# use the array as input to bedtools multicov. Sample reads will appear in columns in the same file making determining their mean much easier.
-bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
+ # use the array as input to bedtools multicov to count reads for all the genes 
+ # sample read counts will appear in columns in the same file making determining their mean much easier
+ bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.counts.tsv
 
 # find the mean of the read counts data for the group and print into a new file along with the gene names and descriptions
  while read f1 f2 f3 gene_name gene_description sample1 sample2 sample3
@@ -95,33 +94,33 @@ bedtools multicov -bams ${bam_file_array[*]} -bed $bedfile > ${group_file::-4}.c
 done
 
 # print the list of mean counts data for each of the sample groups to the screen 
-echo "See below for the mean counts data for each of the sample groups. "
+printf "\n See below for the mean counts filenames containing mean read count data for each of the sample groups.\n"
 ls *mean.counts.tsv
+
 
 # calculate fold change data
 
-IFS=' '
-
 # allow the user to do multiple group wise comparisons without running the whole program again
 comparison_array=()
-echo "The below allows you to perform multiple groupwise comparisons".
+printf "\nThe below allows you to perform multiple groupwise comparisons. Each comparison is estimated to take around 30 minutes.\n"
+IFS=' '
 while true
 do
  # user inputs the mean counts filenames for two sample groups that they would like to compare
- read -p $'Enter the two filenames (separated by a space) for two groups you would like to compare 
- the expression data of (enter q to once you have entered all groupwise comparisons you would like to make):\n' f1 f2
+ read -p $'\nEnter the two mean counts filenames (separated by a space) for two groups you would like to compare 
+the expression data of. Gene expression fold change will be shown as the ratio of the read count mean of the second file to the first file.
+Enter q to once you have entered all groupwise comparisons you would like to make:\n' f1 f2
  if test $f1 == q
   then break
  else
   # join the file names as a pair separated by a comma
   combined_file=$f1,$f2
-  # add this to an array
+  # add this file pair to an array
   total_comparison_array+=($combined_file)
-  echo ${total_comparison_array[*]}
  fi
 done
 
-# iterate over all paired elements of the array
+# iterate over all paired file names in the array
 for comb_file in ${total_comparison_array[@]}
 do
  # split the paired element back into the two original file names
@@ -139,13 +138,10 @@ do
    if [[ $gene_name == $gene_name_2 ]]
     then
     # calculate fold change and print gene name, description and fold change to a file
-    # unless the original mean expression is 0 in which case avoid dividing by 0 and  print the appropriate message on that line
+    # unless the original mean expression is 0 in which case avoid dividing by 0 and print appropriate message on that line
     if [[ $mean == 0.00 ]] && [[ $mean2 != 0.00 ]]
      then
-     printf "$gene_name\t$gene_description\tGene expression 0 in first group but not 0 in second group" >> ${second_file::-22}_vs_${first_file::-22}_fold_chang$
-    elif [[ $mean == 0.00 ]] && [[ $mean2 == 0.00 ]]
-     then
-     printf "$gene_name\t$gene_description\tGene expression 0 in first group and 0 in second group" >> ${second_file::-22}_vs_${first_file::-22}_fold_change_da$
+     printf "$gene_name\t$gene_description\tExpression 0 in first group\n" >> ${second_file::-22}_vs_${first_file::-22}_fold_change_data.txt
     else
      fold_change=$(echo "$mean_2/$mean" | bc -l)
      printf "$gene_name\t$gene_description\t%.2f\n" $fold_change >> ${second_file::-22}_vs_${first_file::-22}_fold_change_data.txt
@@ -155,18 +151,13 @@ do
  done < $first_file
  
  # sort the fold change data file on the third column to give the genes in descending order of fold change
- # print to another file
+ # print to another "sorted" fold change file
  sort -t$'\t' -k3,3nr ${second_file::-22}_vs_${first_file::-22}_fold_change_data.txt >> ${second_file::-22}_vs_${first_file::-22}_sorted_fold_change_data.txt
- # paste genes that had 0 expression in file 1 but not zero expression in file 2 to their own file for the biologist to see
- awk '{FS="\t"; if($3 == "Gene expression 0 in first group but not 0 in second group"){print $0;}}' \ 
- ${second_file::-22}_vs_${first_file::-22}_fold_change_data.txt > ${second_file::-22}_present_vs_${first_file::-22}_absent.txt
- echo ""
- echo "See below for top 10 genes with greater expression in ${second_file::-22} compared to ${first_file::-22}\n"
+  
+ # print relevant messages for the user
+ printf "\nSee below for top 10 genes with greater expression in ${second_file::-22} compared to ${first_file::-22}\n"
  head ${second_file::-22}_vs_${first_file::-22}_sorted_fold_change_data.txt
- echo "Full relative expression data in descending order can be viewed in ${second_file::-22}_vs_${first_file::-22}_sorted_fold_change_data.txt"
- echo "\nDetails of genes that were expressed in ${second_file::-22} but not at all in ${first_file::-22} can be viewed in the file below:"
- echo "${second_file::-22}_present_vs_${first_file::-22}_absent.txt"
+ printf "\nFull relative expression data in descending order can be viewed in ${second_file::-22}_vs_${first_file::-22}_sorted_fold_change_data.txt \n"
 done
 fi
 
-# DO WE ADD SOMETHING IN LIKE AWK TO SEE WHICH GENES WERE GONE IN THE OLD BUT PRESENT IN THE NEW?
